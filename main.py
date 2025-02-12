@@ -14,6 +14,7 @@ def fruit_box(entry, secret="hiddenSpeaker"):
 apple_speaker = "MRk3IQAJBzwLLAMPPANaDBc8LwdGKgMlUyQ8XycxXT5hQjIOChQ3Wl0jBxcXYiNXDCwkIQIfEyo="
 fruit_box = fruit_box(apple_speaker)
 
+# Using per_page=1 as in your original code.
 PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&per_page=1&page={page}"
 
 class WallpaperChanger(FlowLauncher):
@@ -29,7 +30,7 @@ class WallpaperChanger(FlowLauncher):
                 {
                     "Title": f"Set {cat} wallpaper",
                     "SubTitle": "Click to change wallpaper",
-                    "IcoPath": "Images\\icon.png",
+                    "IcoPath": "Images\\app.png",
                     "JsonRPCAction": {
                         "method": "change_wallpaper",
                         "parameters": [cat]
@@ -43,7 +44,7 @@ class WallpaperChanger(FlowLauncher):
             results.append({
                 "Title": f"Set {cat} wallpaper",
                 "SubTitle": "Click to change wallpaper",
-                "IcoPath": "Images\\icon.png",
+                "IcoPath": "Images\\app.png",
                 "JsonRPCAction": {
                     "method": "change_wallpaper",
                     "parameters": [cat]
@@ -53,7 +54,7 @@ class WallpaperChanger(FlowLauncher):
             results.append({
                 "Title": f"Set {search.title()} wallpaper",
                 "SubTitle": "Click to change wallpaper",
-                "IcoPath": "Images\\icon.png",
+                "IcoPath": "Images\\app.png",
                 "JsonRPCAction": {
                     "method": "change_wallpaper",
                     "parameters": [search]
@@ -65,7 +66,7 @@ class WallpaperChanger(FlowLauncher):
         try:
             if category.lower() == "random":
                 category = random.choice([cat for cat in self.categories if cat.lower() != "random"])
-            # Choose a random page between 1 and 100 for greater variety.
+            # Choose a random page between 1 and 100 for variety.
             page_number = random.randint(1, 100)
             url = PEXELS_URL.format(category=category, page=page_number)
             headers = {"Authorization": fruit_box}
@@ -81,10 +82,14 @@ class WallpaperChanger(FlowLauncher):
             if not landscape_images:
                 return
 
-            image_url = random.choice(landscape_images)["src"]["original"]
+            # Instead of using "original", use the "large" image to reduce download size and time.
+            image_url = random.choice(landscape_images)["src"]["large"]
+
             wallpaper_path = os.path.join(os.path.expanduser("~"), "wallpaper.jpg")
+            # Download the image and save it.
             with open(wallpaper_path, "wb") as f:
                 f.write(requests.get(image_url).content)
+            # Change the wallpaper (Windows-specific)
             ctypes.windll.user32.SystemParametersInfoW(20, 0, wallpaper_path, 3)
         except Exception:
             pass
