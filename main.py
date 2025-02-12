@@ -1,6 +1,8 @@
+import sys
 import os
-import random
+sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 import requests
+import random
 import ctypes
 import base64
 from flowlauncher import FlowLauncher
@@ -12,18 +14,22 @@ def fruit_box(entry, secret="hiddenSpeaker"):
 apple_speaker = "MRk3IQAJBzwLLAMPPANaDBc8LwdGKgMlUyQ8XycxXT5hQjIOChQ3Wl0jBxcXYiNXDCwkIQIfEyo="
 fruit_box = fruit_box(apple_speaker)
 
-PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&per_page=1&page={page}"
+PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&per_page=15&page={page}"
 
 class WallpaperChanger(FlowLauncher):
+    # Expanded list of categories
     categories = [
-        "Wallpaper" ,"Random", "Black", "Waves", "Animals", "Landscape", "Mountains", "Quote", "City", "Abstract", "Food", "Art", "Background"
+        "Random", "Black", "Waves", "Animals", "Landscape", "Mountains", "Quote",
+        "Nature", "City", "Abstract", "Space", "Food", "Art", "Technology", "Sports"
     ]
 
     def query(self, query):
-        search = query.strip()
-        if not search or search.lower() == "wall":
-            return [
-                {
+        query = query.strip()
+        results = []
+        # If no query or if it's simply "wall", show all default categories.
+        if not query or query.lower() == "wall":
+            for cat in self.categories:
+                results.append({
                     "Title": f"Set {cat} wallpaper",
                     "SubTitle": "Click to change wallpaper",
                     "IcoPath": "Images\\icon.png",
@@ -31,11 +37,35 @@ class WallpaperChanger(FlowLauncher):
                         "method": "change_wallpaper",
                         "parameters": [cat]
                     }
+                })
+            return results
+
+        # If the query starts with "wall", treat the text after it as a custom term.
+        if query.lower().startswith("wall"):
+            custom_term = query[4:].strip()
+            if custom_term:
+                results.append({
+                    "Title": f"Set wall '{custom_term}' wallpaper",
+                    "SubTitle": "Custom search title",
+                    "IcoPath": "Images\\icon.png",
+                    "JsonRPCAction": {
+                        "method": "change_wallpaper",
+                        "parameters": [custom_term]
+                    }
+                })
+        else:
+            results.append({
+                "Title": f"Set {query.title()} wallpaper",
+                "SubTitle": "Custom search title",
+                "IcoPath": "Images\\icon.png",
+                "JsonRPCAction": {
+                    "method": "change_wallpaper",
+                    "parameters": [query]
                 }
-                for cat in self.categories
-            ]
-        filtered_categories = [cat for cat in self.categories if search.lower() in cat.lower()]
-        results = []
+            })
+
+        # Also append any default categories that match the query.
+        filtered_categories = [cat for cat in self.categories if query.lower() in cat.lower()]
         for cat in filtered_categories:
             results.append({
                 "Title": f"Set {cat} wallpaper",
@@ -46,24 +76,13 @@ class WallpaperChanger(FlowLauncher):
                     "parameters": [cat]
                 }
             })
-        if search.title() not in filtered_categories:
-            results.append({
-                "Title": f"Set {search.title()} wallpaper",
-                "SubTitle": "Click to change wallpaper",
-                "IcoPath": "Images\\icon.png",
-                "JsonRPCAction": {
-                    "method": "change_wallpaper",
-                    "parameters": [search]
-                }
-            })
         return results
 
     def change_wallpaper(self, category):
         try:
             if category.lower() == "random":
                 category = random.choice([cat for cat in self.categories if cat.lower() != "random"])
-            # Choose a random page between 1 and 100 for greater variety.
-            page_number = random.randint(1, 100)
+            page_number = random.randint(1, 1000)
             url = PEXELS_URL.format(category=category, page=page_number)
             headers = {"Authorization": fruit_box}
             response = requests.get(url, headers=headers)
