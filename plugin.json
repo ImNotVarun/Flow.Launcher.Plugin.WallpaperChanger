@@ -1,0 +1,12 @@
+{
+    "ID": "flow.launcher.pexels.wallpaperchanger",
+    "ActionKeyword": "wall",
+    "Name": "Wallpaper Changer",
+    "Description": "Change wallpaper using Pexels API",
+    "Author": "Varun",
+    "Version": "1.0.0",
+    "Language": "python",
+    "Website": "https://github.com/ImNotVarun/Flow.Launcher.Plugin.WallpaperChanger",
+    "IcoPath": "Images\\app.png",
+    "ExecuteFileName": "main.py"
+  }
