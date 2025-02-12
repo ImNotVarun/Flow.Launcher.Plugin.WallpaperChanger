@@ -3,7 +3,8 @@ name: Publish Release
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
     paths-ignore: 
       - .github/workflows/*
 
@@ -46,4 +47,3 @@ jobs:
           tag_name: "v${{steps.version.outputs.prop}}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          
