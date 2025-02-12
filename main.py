@@ -14,12 +14,13 @@ def fruit_box(entry, secret="hiddenSpeaker"):
 apple_speaker = "MRk3IQAJBzwLLAMPPANaDBc8LwdGKgMlUyQ8XycxXT5hQjIOChQ3Wl0jBxcXYiNXDCwkIQIfEyo="
 fruit_box = fruit_box(apple_speaker)
 
-PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&per_page=1&page={page}"
+# Updated: per_page is now 15 to fetch more images.
+PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&per_page=10&page={page}"
 
 class WallpaperChanger(FlowLauncher):
     categories = [
-        "Wallpaper", "Random", "Black", "Waves", "Animals", "Landscape", "Mountains", 
-        "Quote", "City", "Abstract", "Food", "Art", "Background"
+        "Random", "Waves", "Animals", "Landscape", "Mountains", 
+        "Quote", "City", "Abstract", "Art", "Background"
     ]
 
     def query(self, query):
@@ -65,8 +66,8 @@ class WallpaperChanger(FlowLauncher):
         try:
             if category.lower() == "random":
                 category = random.choice([cat for cat in self.categories if cat.lower() != "random"])
-            # Choose a random page between 1 and 100 for greater variety.
-            page_number = random.randint(1, 100)
+            # Increase variety by choosing a random page between 1 and 100.
+            page_number = random.randint(1, 10)
             url = PEXELS_URL.format(category=category, page=page_number)
             headers = {"Authorization": fruit_box}
             response = requests.get(url, headers=headers)
@@ -81,10 +82,27 @@ class WallpaperChanger(FlowLauncher):
             if not landscape_images:
                 return
 
-            image_url = random.choice(landscape_images)["src"]["original"]
+            # Read the last used image URL, if available.
+            last_wallpaper_file = os.path.join(os.path.dirname(__file__), "last_wallpaper.txt")
+            last_url = None
+            if os.path.exists(last_wallpaper_file):
+                with open(last_wallpaper_file, "r") as f:
+                    last_url = f.read().strip()
+
+            selected_image = random.choice(landscape_images)["src"]["original"]
+            attempts = 0
+            # Try up to 5 times to get a different image than the last one.
+            while selected_image == last_url and attempts < 5:
+                selected_image = random.choice(landscape_images)["src"]["original"]
+                attempts += 1
+
+            # Save the selected URL for next time.
+            with open(last_wallpaper_file, "w") as f:
+                f.write(selected_image)
+
             wallpaper_path = os.path.join(os.path.expanduser("~"), "wallpaper.jpg")
             with open(wallpaper_path, "wb") as f:
-                f.write(requests.get(image_url).content)
+                f.write(requests.get(selected_image).content)
             ctypes.windll.user32.SystemParametersInfoW(20, 0, wallpaper_path, 3)
         except Exception:
             pass
