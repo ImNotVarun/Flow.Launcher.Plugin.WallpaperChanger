@@ -21,27 +21,35 @@ class WallpaperChanger(FlowLauncher):
     def query(self, query):
         query = query.strip()
 
-        if query.lower().startswith("key "):
-            api_key = query[4:].strip()
-            if api_key:
-                return [{
-                    "Title": "Save API Key",
-                    "SubTitle": f"Press Enter to save API key: {api_key}",
-                    "IcoPath": "Images\\app.png",
-                    "JsonRPCAction": {"method": "save_api_key", "parameters": [api_key]}
-                }]
+        # Check if the command starts with "key"
+        if query.lower().startswith("key"):
+            key_argument = query[3:].strip()
+            if not key_argument:
+                if self.get_user_api_key():
+                    return [{
+                        "Title": "API Key already set",
+                        "SubTitle": "To update your API key, type: wall key <new-api-key>",
+                        "IcoPath": "Images\\app.png"
+                    }]
+                else:
+                    return [{
+                        "Title": "API Key not set",
+                        "SubTitle": "Usage: wall key <your-api-key>",
+                        "IcoPath": "Images\\app.png"
+                    }]
             else:
                 return [{
-                    "Title": "Invalid API Key",
-                    "SubTitle": "Usage: wall key your-api-key",
-                    "IcoPath": "Images\\app.png"
+                    "Title": "Save API Key",
+                    "SubTitle": f"Press Enter to save API key: {key_argument}",
+                    "IcoPath": "Images\\app.png",
+                    "JsonRPCAction": {"method": "save_api_key", "parameters": [key_argument]}
                 }]
 
         # If no API key is set, instruct the user and offer to open the Pexels API page.
         if not self.get_user_api_key():
             return [{
-                "Title": "Pexels API key not set Click to open Pexels API",
-                "SubTitle": ("Use 'wall key <your-api-key>' to set it."),
+                "Title": "Pexels API key not set - Click to open Pexels API",
+                "SubTitle": "Use 'wall key <your-api-key>' to set it.",
                 "IcoPath": "Images\\app.png",
                 "JsonRPCAction": {"method": "open_pexels_api_page", "parameters": []}
             }]
