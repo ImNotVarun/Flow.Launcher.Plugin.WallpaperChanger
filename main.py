@@ -4,13 +4,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'lib'))
 import random
 import requests
 import ctypes
+import webbrowser
 from flowlauncher import FlowLauncher
 
-# Updated Pexels API endpoint: removed 'per_page' to only rely on the default page results
 PEXELS_URL = "https://api.pexels.com/v1/search?query={category}&page={page}"
+PEXELS_API_PAGE = "https://www.pexels.com/api/"
 
 class WallpaperChanger(FlowLauncher):
-    # Expanded wallpaper categories with 'Random' always at the top
+
     categories = ["Random"] + sorted([
         "Nature", "Waves", "Animals", "Landscape", "Mountains", "Quote", "City", 
         "Abstract", "Beach", "Trees", "Sunset", "Flowers", "Space", 
@@ -18,34 +19,33 @@ class WallpaperChanger(FlowLauncher):
     ])
 
     def query(self, query):
-        """Handles user input and provides options."""
         query = query.strip()
 
-        # Handle API key setting
         if query.lower().startswith("key "):
             api_key = query[4:].strip()
             if api_key:
-                self.set_api_key(api_key)
                 return [{
-                    "Title": "Pexels API Key Set",
-                    "SubTitle": "API key saved successfully.",
+                    "Title": "Save API Key",
+                    "SubTitle": f"Press Enter to save API key: {api_key}",
+                    "IcoPath": "Images\\app.png",
+                    "JsonRPCAction": {"method": "save_api_key", "parameters": [api_key]}
+                }]
+            else:
+                return [{
+                    "Title": "Invalid API Key",
+                    "SubTitle": "Usage: wall key your-api-key",
                     "IcoPath": "Images\\app.png"
                 }]
-            return [{
-                "Title": "Enter your Pexels API Key",
-                "SubTitle": "Usage: wall key your-api-key",
-                "IcoPath": "Images\\app.png"
-            }]
 
-        # Ensure an API key is set before proceeding
+        # If no API key is set, instruct the user and offer to open the Pexels API page.
         if not self.get_user_api_key():
             return [{
-                "Title": "Enter your Pexels API Key",
-                "SubTitle": "Usage: wall key your-api-key",
-                "IcoPath": "Images\\app.png"
+                "Title": "Pexels API key not set Click to open Pexels API",
+                "SubTitle": ("Use 'wall key <your-api-key>' to set it."),
+                "IcoPath": "Images\\app.png",
+                "JsonRPCAction": {"method": "open_pexels_api_page", "parameters": []}
             }]
-
-        # If no query is given, return all available categories
+        
         if not query:
             return [{
                 "Title": f"{cat} wallpaper",
@@ -53,71 +53,72 @@ class WallpaperChanger(FlowLauncher):
                 "IcoPath": "Images\\app.png",
                 "JsonRPCAction": {"method": "change_wallpaper", "parameters": [cat]}
             } for cat in self.categories]
-
-        # When a query is provided, always include "Random wallpaper" as the first option.
-        options = [{
-            "Title": "Random wallpaper",
-            "SubTitle": "Click to change wallpaper",
-            "IcoPath": "Images\\app.png",
-            "JsonRPCAction": {"method": "change_wallpaper", "parameters": ["Random"]}
-        }]
-
-        # If the query isn't "random", add the query wallpaper option after "Random"
-        if query.lower() != "random":
-            options.append({
+        else:
+            return [{
                 "Title": f"{query.title()} wallpaper",
                 "SubTitle": "Click to change wallpaper",
                 "IcoPath": "Images\\app.png",
                 "JsonRPCAction": {"method": "change_wallpaper", "parameters": [query]}
-            })
+            }]
 
-        return options
+    def save_api_key(self, api_key):
+        self.set_api_key(api_key)
+        return [{
+            "Title": "Pexels API Key Saved",
+            "SubTitle": "Your API key has been saved successfully.",
+            "IcoPath": "Images\\app.png"
+        }]
+    
+    def open_pexels_api_page(self):
+        webbrowser.open(PEXELS_API_PAGE)
+        return [{
+            "Title": "Opened Pexels API Page",
+            "SubTitle": ("Please copy your API key from the opened page and set it "
+                         "using 'wall key <your-api-key>'."),
+            "IcoPath": "Images\\app.png"
+        }]
+
 
     def change_wallpaper(self, category):
-        """Fetches a wallpaper from Pexels and sets it as the desktop background."""
         try:
             api_key = self.get_user_api_key()
             if not api_key:
                 return
 
-            # If 'Random' is chosen, pick a random category (excluding "Random")
             if category.lower() == "random":
                 category = random.choice([cat for cat in self.categories if cat.lower() != "random"])
-            
-            # Fetch images from Pexels API using the updated URL without 'per_page'
             url = PEXELS_URL.format(category=category, page=random.randint(1, 10))
             response = requests.get(url, headers={"Authorization": api_key})
             if response.status_code != 200:
                 return
 
-            # Filter for landscape images (wider than taller)
             images = [img for img in response.json().get("photos", [])
                       if img.get("width", 0) > img.get("height", 0)]
             if not images:
                 return
 
-            # Select a random image from the returned page and download it
             selected_image = random.choice(images)["src"]["original"]
             wallpaper_path = os.path.join(os.path.expanduser("~"), "wallpaper.jpg")
             with open(wallpaper_path, "wb") as f:
                 f.write(requests.get(selected_image).content)
-            
-            # Set the downloaded image as the wallpaper
             ctypes.windll.user32.SystemParametersInfoW(20, 0, wallpaper_path, 3)
         except Exception:
             pass
 
+    def get_plugin_settings_directory(self):
+        settings_dir = os.path.join(os.getenv("APPDATA"), "FlowLauncher", "Settings", "Plugins", "Wallpaper Changer")
+        os.makedirs(settings_dir, exist_ok=True)
+        return settings_dir
+
     def get_user_api_key(self):
-        """Retrieves the stored Pexels API key from a file."""
-        api_key_file = os.path.join(os.path.dirname(__file__), "pexels_api_key.txt")
+        api_key_file = os.path.join(self.get_plugin_settings_directory(), "pexels_api_key.txt")
         if os.path.exists(api_key_file):
             with open(api_key_file, "r") as f:
                 return f.read().strip()
         return None
 
     def set_api_key(self, api_key):
-        """Saves the Pexels API key to a file."""
-        api_key_file = os.path.join(os.path.dirname(__file__), "pexels_api_key.txt")
+        api_key_file = os.path.join(self.get_plugin_settings_directory(), "pexels_api_key.txt")
         with open(api_key_file, "w") as f:
             f.write(api_key)
 
